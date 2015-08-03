@@ -31,9 +31,9 @@ except ImportError:
 
 # reduce
 try:
-    reduce
+    reduce = reduce
 except NameError:
-    from functools import reduce
+    from functools import reduce  # Python 3
 
 
 # Asserting the imports for static analysis.
