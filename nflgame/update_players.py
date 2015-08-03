@@ -55,6 +55,7 @@ from bs4 import BeautifulSoup
 import nflgame
 import nflgame.live
 import nflgame.player
+from nflgame.compat import itervalues
 
 urls = {
     'roster': 'http://www.nfl.com/teams/roster?team=%s',
@@ -345,7 +346,7 @@ def run():
         players = {}
 
         # Grab players one game a time to avoid obscene memory requirements.
-        for _, schedule in nflgame.sched.games.itervalues():
+        for _, schedule in itervalues(nflgame.sched.games):
             # If the game is too far in the future, skip it...
             if nflgame.live._game_datetime(schedule) > nflgame.live._now():
                 continue

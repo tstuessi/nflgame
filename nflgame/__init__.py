@@ -27,7 +27,7 @@ first week of the 2013 season:
     players = nflgame.combine_game_stats(games)
     for p in players.rushing().sort('rushing_yds').limit(5):
         msg = '%s %d carries for %d yards and %d TDs'
-        print msg % (p, p.rushing_att, p.rushing_yds, p.rushing_tds)
+        print(msg % (p, p.rushing_att, p.rushing_yds, p.rushing_tds))
 
 And the output is:
 
@@ -45,7 +45,7 @@ Or you could find the top 5 passing plays in the same time period:
     games = nflgame.games(2013, week=1)
     plays = nflgame.combine_plays(games)
     for p in plays.sort('passing_yds').limit(5):
-        print p
+        print(p)
 
 And the output is:
 
@@ -80,10 +80,6 @@ There are several active contributors to nflgame that watch the issue tracker.
 We tend to respond fairly quickly!
 """
 
-try:
-    from collections import OrderedDict
-except:
-    from ordereddict import OrderedDict  # from PyPI
 import itertools
 
 import nflgame.game
@@ -91,9 +87,9 @@ import nflgame.live
 import nflgame.player
 import nflgame.sched
 import nflgame.seq
+from nflgame.compat import itervalues, reduce
 from nflgame.version import __version__
 
-assert OrderedDict  # Asserting the import for static analysis.
 VERSION = __version__  # Deprecated. Backwards compatibility.
 
 NoPlayers = nflgame.seq.GenPlayerStats(None)
@@ -159,7 +155,7 @@ def find(name, team=None):
     If team is not None, it is used as an additional search constraint.
     """
     hits = []
-    for player in players.itervalues():
+    for player in itervalues(players):
         if player.name.lower() == name.lower():
             if team is None or team.lower() == player.team.lower():
                 hits.append(player)
@@ -425,7 +421,7 @@ def _search_schedule(year, week=None, home=None, away=None, kind='REG',
     (as opposed to waiting for a 404 error from NFL.com).
     """
     infos = []
-    for info in nflgame.sched.games.itervalues():
+    for info in itervalues(nflgame.sched.games):
         y, t, w = info['year'], info['season_type'], info['week']
         h, a = info['home'], info['away']
         if year is not None:
