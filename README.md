@@ -26,7 +26,7 @@ games = nflgame.games(2013, week=1)
 players = nflgame.combine_game_stats(games)
 for p in players.rushing().sort('rushing_yds').limit(5):
     msg = '%s %d carries for %d yards and %d TDs'
-    print msg % (p, p.rushing_att, p.rushing_yds, p.rushing_tds)
+    print(msg % (p, p.rushing_att, p.rushing_yds, p.rushing_tds))
 ```
 
 And the output is:
@@ -47,7 +47,7 @@ import nflgame
 games = nflgame.games(2013, week=1)
 plays = nflgame.combine_plays(games)
 for p in plays.sort('passing_yds').limit(5):
-    print p
+    print(p)
 ```
 
 And the output is:
@@ -109,8 +109,6 @@ On all platforms, it is recommend to install it with `pip`:
 pip install nflgame
 ```
 
-(You may need to use `pip2` if Python 3 is the default on your system.)
-
 If you can't get `pip` to work on Windows, then you can try downloading the
 Windows installer on nflgame's PyPI page.
 
@@ -120,8 +118,7 @@ Python standard library, but `nflgame.live` depends on `pytz` and the
 All three dependencies are installed automatically if you install nflgame from
 PyPI with `pip`.
 
-nflgame does not yet work on Python 3, but it should work with Python 2.6 and
-2.7.
+nflgame works on Python 2.6, 2.7, and Python 3.3+
 
 
 ### Updating the player database (e.g., rosters)
