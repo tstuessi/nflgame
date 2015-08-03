@@ -55,7 +55,7 @@ from bs4 import BeautifulSoup
 import nflgame
 import nflgame.live
 import nflgame.player
-from nflgame.compat import itervalues
+from nflgame.compat import input, itervalues
 
 urls = {
     'roster': 'http://www.nfl.com/teams/roster?team=%s',
@@ -331,7 +331,7 @@ def run():
         eprint("It is strongly recommended to find the 'players.json' file "
                "that comes with nflgame.")
         eprint("Are you sure you want to continue? [y/n] ", end='')
-        answer = raw_input()
+        answer = input()
         if answer[0].lower() != 'y':
             eprint("Quitting...")
             sys.exit(1)

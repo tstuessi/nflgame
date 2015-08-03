@@ -4,9 +4,8 @@ import sys
 
 from collections import namedtuple
 
-# Common constants
+
 IS_PY3 = sys.version_info[0] == 3
-string_types = (str if IS_PY3 else unicode, )
 
 
 # ifilter
@@ -29,14 +28,19 @@ try:
 except ImportError:
     from collections import OrderedDict  # Python 2.7 + Python 3
 
-assert OrderedDict  # Asserting the import for static analysis.
-
 
 # reduce
 try:
     reduce
 except NameError:
     from functools import reduce
+
+
+# Asserting the imports for static analysis.
+assert ifilter
+assert MAXINT
+assert OrderedDict
+assert reduce
 
 
 # urllib
@@ -55,22 +59,49 @@ except ImportError:
     del urllib_error, urllib_request
 
 
-# Dict iter functions
-def iteritems(obj, **kwargs):
-    return iter(obj.items(**kwargs)) if IS_PY3 else obj.iteritems(**kwargs)
+# Python 3
+if IS_PY3:
+    # Constants
+    binary_type = bytes
+    text_type = str
+
+    # Dict iter functions
+    def iteritems(obj, **kwargs):
+        return iter(obj.items(**kwargs))
+
+    def iterkeys(obj, **kwargs):
+        return iter(obj.keys(**kwargs))
+
+    def itervalues(obj, **kwargs):
+        return iter(obj.values(**kwargs))
+# Python 2
+else:
+    # Constants
+    binary_type = str
+    input = raw_input  # noqa
+    range = xrange  # noqa
+    text_type = unicode  # noqa
+
+    # Dict iter functions
+    def iteritems(obj, **kwargs):
+        return obj.iteritems(**kwargs)
+
+    def iterkeys(obj, **kwargs):
+        return obj.iterkeys(**kwargs)
+
+    def itervalues(obj, **kwargs):
+        return obj.itervalues(**kwargs)
 
 
-def iterkeys(obj, **kwargs):
-    return iter(obj.keys(**kwargs)) if IS_PY3 else obj.iterkeys(**kwargs)
+# String functions
+def force_binary(value, encoding='utf-8', errors='strict'):
+    if isinstance(value, binary_type):
+        return value
+    return value.encode(encoding, errors)
 
 
-def itervalues(obj, **kwargs):
-    return iter(obj.values(**kwargs)) if IS_PY3 else obj.itervalues(**kwargs)
-
-
-# String/unicode functions
-def force_unicode(value, encoding='utf-8', errors='strict'):
-    if isinstance(value, string_types):
+def force_text(value, encoding='utf-8', errors='strict'):
+    if isinstance(value, text_type):
         return value
     return value.decode(encoding, errors)
 

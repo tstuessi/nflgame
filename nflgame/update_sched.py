@@ -7,15 +7,15 @@ import sys
 import xml.dom.minidom as xml
 
 import nflgame
-from nflgame.compat import OrderedDict, urllib
+from nflgame.compat import OrderedDict, range, urllib
 
 
 def year_phase_week(year=None, phase=None, week=None):
     cur_year, _ = nflgame.live.current_year_and_week()
     season_types = (
-        ('PRE', xrange(0, 4 + 1)),
-        ('REG', xrange(1, 17 + 1)),
-        ('POST', xrange(1, 4 + 1)),
+        ('PRE', range(0, 4 + 1)),
+        ('REG', range(1, 17 + 1)),
+        ('POST', range(1, 4 + 1)),
     )
     for y in range(2009, cur_year+1):
         if year is not None and year != y:
@@ -55,7 +55,7 @@ def week_schedule(year, stype, week):
     try:
         dom = xml.parse(urllib.urlopen(url))
     except urllib.HTTPError:
-        print >> sys.stderr, 'Could not load %s' % url
+        print('Could not load %s' % url, file=sys.stderr)
         return []
 
     games = []

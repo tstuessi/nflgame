@@ -1,17 +1,22 @@
-from collections import namedtuple
-import os
-import os.path as path
+from __future__ import print_function
+
 import gzip
 import json
+import operator
+import os
+import os.path as path
 import socket
 import sys
+
+from collections import namedtuple
 
 import nflgame.player
 import nflgame.sched
 import nflgame.seq
 import nflgame.statmap
 from nflgame.compat import (
-    force_unicode,
+    force_binary,
+    force_text,
     iteritems,
     itervalues,
     MAXINT,
@@ -78,10 +83,10 @@ class FieldPosition (object):
         else:
             self.offset = 50 - yd
 
-    def __cmp__(self, other):
+    def __lt__(self, other):
         if isinstance(other, int):
-            return cmp(self.offset, other)
-        return cmp(self.offset, other.offset)
+            return self.offset < other
+        return self.offset < other.offset
 
     def __str__(self):
         if self.offset > 0:
@@ -118,9 +123,9 @@ class PossessionTime (object):
         """
         return self.seconds + self.minutes * 60
 
-    def __cmp__(self, other):
+    def __lt__(self, other):
         a, b = (self.minutes, self.seconds), (other.minutes, other.seconds)
-        return cmp(a, b)
+        return a < b
 
     def __add__(self, other):
         new_time = PossessionTime('0:00')
@@ -196,12 +201,21 @@ class GameClock (object):
     def is_final(self):
         return 'final' in self.qtr.lower()
 
-    def __cmp__(self, other):
+    def __compare__(self, other, operation):
         if self.__qtr != other.__qtr:
-            return cmp(self.__qtr, other.__qtr)
+            return operation(self.__qtr, other.__qtr)
         elif self._minutes != other._minutes:
-            return cmp(other._minutes, self._minutes)
-        return cmp(other._seconds, self._seconds)
+            return operation(self._minutes, other._minutes)
+        return operation(self._seconds, other._seconds)
+
+    def __eq__(self, other):
+        return self.__compare__(other, operator.eq)
+
+    def __lt__(self, other):
+        return self.__compare__(other, operator.lt)
+
+    def __le__(self, other):
+        return self.__compare__(other, operator.le)
 
     def __str__(self):
         """
@@ -340,11 +354,11 @@ class Game (object):
         if fpath is None:
             fpath = _jsonf % self.eid
         try:
-            print >> gzip.open(fpath, 'w+'), self.rawData,
+            with gzip.open(fpath, 'w+') as handler:
+                handler.write(force_binary(self.rawData))
         except IOError:
-            print >> sys.stderr, "Could not cache JSON data. Please " \
-                                 "make '%s' writable." \
-                                 % os.path.dirname(fpath)
+            print("Could not cache JSON data. Please make '%s' writable."
+                  % os.path.dirname(fpath), file=sys.stderr)
 
     def nice_score(self):
         """
@@ -795,15 +809,17 @@ def _get_json_data(eid=None, fpath=None):
     assert eid is not None or fpath is not None
 
     if fpath is not None:
-        return force_unicode(gzip.open(fpath).read())
+        with gzip.open(fpath) as handler:
+            return force_text(handler.read())
 
     fpath = _jsonf % eid
     if os.access(fpath, os.R_OK):
-        return force_unicode(gzip.open(fpath).read())
+        with gzip.open(fpath) as handler:
+            return force_text(handler.read())
 
     try:
         response = urllib.urlopen(_json_base_url % (eid, eid), timeout=5).read()
-        return force_unicode(response)
+        return force_text(response)
     except urllib.HTTPError:
         pass
     except socket.timeout:

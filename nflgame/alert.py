@@ -78,6 +78,9 @@ typically need to be reused in a long running program. (i.e., If you don't
 send an alert for a while, you'll probably be disconnected from the SMTP
 server. In which case, the connection setup will be executed again.)
 """
+
+from __future__ import print_function
+
 import smtplib
 import sys
 
@@ -115,8 +118,8 @@ def google_voice_login(email, passwd):
     global _voice
 
     if not _gv_available:
-        print >> sys.stderr, "The pygooglevoice Python package is required " \
-                             "in order to use Google Voice."
+        print('The pygooglevoice Python package is required in order to use '
+              'Google Voice.', file=sys.stderr)
         return
 
     _voice = googlevoice.Voice()
