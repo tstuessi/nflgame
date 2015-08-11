@@ -64,6 +64,8 @@ if IS_PY3:
     # Constants
     binary_type = bytes
     text_type = str
+    range = range
+    input = input
 
     # Dict iter functions
     def iteritems(obj, **kwargs):
