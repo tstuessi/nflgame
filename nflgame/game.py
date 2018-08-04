@@ -1,19 +1,28 @@
-from collections import namedtuple
-import os
-import os.path as path
+from __future__ import print_function
+
 import gzip
 import json
+import operator
+import os
+import os.path as path
 import socket
 import sys
-import urllib2
-from collections import OrderedDict
+
+from collections import namedtuple
 
 import nflgame.player
 import nflgame.sched
 import nflgame.seq
 import nflgame.statmap
-
-_MAX_INT = sys.maxint
+from nflgame.compat import (
+    force_binary,
+    force_text,
+    iteritems,
+    itervalues,
+    MAXINT,
+    OrderedDict,
+    urllib,
+)
 
 _jsonf = path.join(path.split(__file__)[0], 'gamecenter-json', '%s.json.gz')
 _json_base_url = "http://www.nfl.com/liveupdate/game-center/%s/%s_gtd.json"
@@ -74,10 +83,10 @@ class FieldPosition (object):
         else:
             self.offset = 50 - yd
 
-    def __cmp__(self, other):
+    def __lt__(self, other):
         if isinstance(other, int):
-            return cmp(self.offset, other)
-        return cmp(self.offset, other.offset)
+            return self.offset < other
+        return self.offset < other.offset
 
     def __str__(self):
         if self.offset > 0:
@@ -114,9 +123,9 @@ class PossessionTime (object):
         """
         return self.seconds + self.minutes * 60
 
-    def __cmp__(self, other):
+    def __lt__(self, other):
         a, b = (self.minutes, self.seconds), (other.minutes, other.seconds)
-        return cmp(a, b)
+        return a < b
 
     def __add__(self, other):
         new_time = PossessionTime('0:00')
@@ -165,7 +174,7 @@ class GameClock (object):
             elif self.is_halftime():
                 self.__qtr = 3
             elif self.is_final():
-                self.__qtr = sys.maxint
+                self.__qtr = MAXINT
             else:
                 self.qtr = 'Pregame'
 
@@ -192,12 +201,21 @@ class GameClock (object):
     def is_final(self):
         return 'final' in self.qtr.lower()
 
-    def __cmp__(self, other):
+    def __compare__(self, other, operation):
         if self.__qtr != other.__qtr:
-            return cmp(self.__qtr, other.__qtr)
+            return operation(self.__qtr, other.__qtr)
         elif self._minutes != other._minutes:
-            return cmp(other._minutes, self._minutes)
-        return cmp(other._seconds, self._seconds)
+            return operation(self._minutes, other._minutes)
+        return operation(self._seconds, other._seconds)
+
+    def __eq__(self, other):
+        return self.__compare__(other, operator.eq)
+
+    def __lt__(self, other):
+        return self.__compare__(other, operator.lt)
+
+    def __le__(self, other):
+        return self.__compare__(other, operator.le)
 
     def __str__(self):
         """
@@ -223,7 +241,7 @@ class Game (object):
         # If we can't get a valid JSON data, exit out and return None.
         try:
             rawData = _get_json_data(eid, fpath)
-        except urllib2.URLError:
+        except urllib.URLError:
             return None
         if rawData is None or rawData.strip() == '{}':
             return None
@@ -237,7 +255,7 @@ class Game (object):
             else:  # For when we have rawData (fpath) and no eid.
                 game.eid = None
                 game.data = json.loads(game.rawData)
-                for k, v in game.data.iteritems():
+                for k, v in iteritems(game.data):
                     if isinstance(v, dict):
                         game.eid = k
                         game.data = v
@@ -336,11 +354,11 @@ class Game (object):
         if fpath is None:
             fpath = _jsonf % self.eid
         try:
-            print >> gzip.open(fpath, 'w+'), self.rawData,
+            with gzip.open(fpath, 'w+') as handler:
+                handler.write(force_binary(self.rawData))
         except IOError:
-            print >> sys.stderr, "Could not cache JSON data. Please " \
-                                 "make '%s' writable." \
-                                 % os.path.dirname(fpath)
+            print("Could not cache JSON data. Please make '%s' writable."
+                  % os.path.dirname(fpath), file=sys.stderr)
 
     def nice_score(self):
         """
@@ -378,21 +396,21 @@ class Game (object):
                                                   pplay.name, pplay.home,
                                                   pplay.team)
             maxstats = {}
-            for stat, val in pplay._stats.iteritems():
+            for stat, val in iteritems(pplay._stats):
                 maxstats[stat] = val
 
             newp._overwrite_stats(maxstats)
             max_players[pplay.playerid] = newp
 
-        for newp in max_players.itervalues():
+        for newp in itervalues(max_players):
             for pgame in game_players:
                 if pgame.playerid != newp.playerid:
                     continue
 
                 maxstats = {}
-                for stat, val in pgame._stats.iteritems():
+                for stat, val in iteritems(pgame._stats):
                     maxstats[stat] = max([val,
-                                          newp._stats.get(stat, -_MAX_INT)])
+                                          newp._stats.get(stat, -MAXINT)])
 
                 newp._overwrite_stats(maxstats)
                 break
@@ -589,7 +607,7 @@ class Play (object):
                     continue
                 statvals = nflgame.statmap.values(info['statId'],
                                                   info['yards'])
-                for k, v in statvals.iteritems():
+                for k, v in iteritems(statvals):
                     v = self.__dict__.get(k, 0) + v
                     self.__dict__[k] = v
                     self._stats[k] = v
@@ -604,7 +622,7 @@ class Play (object):
         self.__players = _json_play_players(self, data['players'])
         self.players = nflgame.seq.GenPlayerStats(self.__players)
         for p in self.players:
-            for k, v in p.stats.iteritems():
+            for k, v in iteritems(p.stats):
                 # Sometimes we may see duplicate statistics (like tackle
                 # assists). Let's just overwrite in this case, since this
                 # data is from the perspective of the play. i.e., there
@@ -708,7 +726,7 @@ def _json_play_players(play, data):
     to determine whether the player belong to the home team or not.
     """
     players = OrderedDict()
-    for playerid, statcats in data.iteritems():
+    for playerid, statcats in iteritems(data):
         if playerid == '0':
             continue
         for info in statcats:
@@ -734,7 +752,7 @@ def _json_play_events(data):
     Takes a single JSON play entry (data) and converts it to a list of events.
     """
     temp = list()
-    for playerid, statcats in data.iteritems():
+    for playerid, statcats in iteritems(data):
         for info in statcats:
             if info['statId'] not in nflgame.statmap.idmap:
                 continue
@@ -757,9 +775,9 @@ def _json_game_player_stats(game, data):
         for category in nflgame.statmap.categories:
             if category not in data[team]['stats']:
                 continue
-            for pid, raw in data[team]['stats'][category].iteritems():
+            for pid, raw in iteritems(data[team]['stats'][category]):
                 stats = {}
-                for k, v in raw.iteritems():
+                for k, v in iteritems(raw):
                     if k == 'name':
                         continue
                     stats['%s_%s' % (category, k)] = v
@@ -791,14 +809,18 @@ def _get_json_data(eid=None, fpath=None):
     assert eid is not None or fpath is not None
 
     if fpath is not None:
-        return gzip.open(fpath).read()
+        with gzip.open(fpath) as handler:
+            return force_text(handler.read())
 
     fpath = _jsonf % eid
     if os.access(fpath, os.R_OK):
-        return gzip.open(fpath).read()
+        with gzip.open(fpath) as handler:
+            return force_text(handler.read())
+
     try:
-        return urllib2.urlopen(_json_base_url % (eid, eid), timeout=5).read()
-    except urllib2.HTTPError:
+        response = urllib.urlopen(_json_base_url % (eid, eid), timeout=5).read()
+        return force_text(response)
+    except urllib.HTTPError:
         pass
     except socket.timeout:
         pass
